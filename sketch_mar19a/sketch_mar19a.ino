@@ -1,10 +1,11 @@
 #include <Wire.h>
-
+#include <"rgb_lcd.h">
 
 
 void setup() {
   // put your setup code here, to run once:
-    pinMode(8, INPUT);
+  Wire.begin();
+  pinMode(8, INPUT);
 
 }
 
