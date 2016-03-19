@@ -13,7 +13,7 @@ void setup() {
   LCD.begin(16, 2); 
 }
 
-float gettemp(void){
+float sampleTemp(void){
   int a = analogRead(pinTempSensor );
  
     float R = 1023.0/((float)a)-1.0;
@@ -24,16 +24,66 @@ float gettemp(void){
     return temperature;
 }
 
+float getTemp(void){
+  float sampling[1000] = {0};
+  float sum = 0;
+  for (int i = 0; i < 1000; i++){
+    sampling[i] = sampleTemp();
+    delay(1);
+  }
+  for (int i = 0; i < 1000; i++){
+    sum += sampling[i];
+  }
+  return sum / 1000;
+}
+
+void checkForStabilize() {
+
+  float temps[10] = {0};
+  float minTemp;
+  float maxTemp;
+
+  //loop until temperature stabilizes
+  while(true) {
+
+    // set some unrealisitic temperatures as an edge case
+
+    for (int i = 0; i < 10; i++) {
+      temps[i] = getTemp();
+      LCD.clear();
+      LCD.print("Calibrating...");
+      LCD.setCursor(0, 1);
+      LCD.print("Temp = ");
+      LCD.print(temps[i]);
+      if (i == 0) {
+        minTemp = temps[i];
+        maxTemp = temps[i];
+      }
+      else if (temps[i] < minTemp) minTemp = temps[i];
+      else if (temps[i] > maxTemp) maxTemp = temps[i];
+    }
+
+    if (maxTemp - minTemp <= 1) return;
+
+  }
+
+}
 
 void loop() {
+  
+  while (digitalRead(8)){
+    LCD.setRGB(255, 255, 255);
+    checkForStabilize();
+    
+  }
+  /*
   // put your main code here, to run repeatedly:
 
   // Check for button press
-  if (digitalRead(8)) {
-    LCD.setRGB(255, 255, 255);
-    LCD.print("Temperature = ");
-    LCD.print(gettemp());
-    delay(1000);
-  }
+  
+  LCD.setRGB(255, 255, 255);
+  LCD.print(getTemp());
+  delay(1000);
   LCD.clear();
+  */
 }
