@@ -179,7 +179,7 @@ void loop() {
     LCD.print("Please Wait!");
     LCD.setCursor(0, 1);
     LCD.print("Calibrating...");
-    //checkForStabilize();
+    checkForStabilize();
     
     if (!buttonPressed) break;
 
@@ -222,8 +222,6 @@ void loop() {
     // optimum temperature is 25
     while ((t = calculateTime(testOptimalTemp, false)) == -1 && buttonPressed);
     if (!buttonPressed) break;
-
-    t = 7;
 
     /*
      * Optimum temperature handling
