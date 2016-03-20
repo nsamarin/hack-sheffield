@@ -96,6 +96,54 @@ float calculateOptimalTime(float startTemp, float optimal, float k) {
 }
 
 
+
+void calculateTime() {
+
+  float t0 = getTemp();
+  delay(10000);
+  float t10 = getTemp();
+  float k = calculateRateOfChange(t0, t10);
+  float t = calculateOptimalTime(t0, 25, k);
+  LCD.clear();
+  float temp = getTemp();
+  LCD.print(t);
+  LCD.print(" temp:");
+  LCD.print(temp);
+
+}
+
+void loop() {
+
+  while (digitalRead(8)){
+    LCD.setRGB(255, 255, 255);
+    //checkForStabilize();
+
+    LCD.clear();
+    LCD.print("Calculating time...");
+    delay(1000);
+    calculateTime();
+
+    delay(5000);
+
+
+    //displayTimeTillCooldown(25);
+  }
+
+  LCD.clear();
+  /*
+  // put your main code here, to run repeatedly:
+
+  // Check for button press
+
+  LCD.setRGB(255, 255, 255);
+  LCD.print(getTemp());
+  delay(1000);
+  LCD.clear();
+  */
+}
+
+
+
 // void displayTimeTillCooldown(float optimal) {
 //
 //   // define variables
@@ -139,43 +187,3 @@ float calculateOptimalTime(float startTemp, float optimal, float k) {
 //     }
 //   }
 // }
-
-
-void loop() {
-
-  while (digitalRead(8)){
-    LCD.setRGB(255, 255, 255);
-    //checkForStabilize();
-
-    LCD.clear();
-    LCD.print("kek");
-    delay(1000);
-
-    float t0 = getTemp();
-    delay(10000);
-    float t10 = getTemp();
-    float k = calculateRateOfChange(t0, t10);
-    float t = calculateOptimalTime(t0, 25, k);
-    LCD.clear();
-    float temp = getTemp();
-    LCD.print(t);
-    LCD.print(" temp:");
-    LCD.print(temp);
-    delay(5000);
-
-
-    //displayTimeTillCooldown(25);
-  }
-
-  LCD.clear();
-  /*
-  // put your main code here, to run repeatedly:
-
-  // Check for button press
-
-  LCD.setRGB(255, 255, 255);
-  LCD.print(getTemp());
-  delay(1000);
-  LCD.clear();
-  */
-}
