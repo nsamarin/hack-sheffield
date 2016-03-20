@@ -8,20 +8,20 @@ const int R0 = 100000;            // R0 = 100k
 const int pinTempSensor = A0;     // Grove - Temperature Sensor connect to A5
 
 enum drinktype {COLD, ROOMTEMP, HOT};
- 
+
 
 void setup() {
   // put your setup code here, to run once:
   pinMode(8, INPUT);
-  LCD.begin(16, 2); 
+  LCD.begin(16, 2);
 }
 
 float sampleTemp(void){
   int a = analogRead(pinTempSensor );
- 
+
     float R = 1023.0/((float)a)-1.0;
     R = 100000.0*R;
- 
+
     float temperature=1.0/(log(R/100000.0)/B+1/298.15)-273.15;//convert to temperature via datasheet ;
 
     return temperature;
@@ -85,56 +85,86 @@ unsigned char getDrinkType(){
   return type;
 }
 
-void displayTimeTillCooldown(float optimal) {
-
-  // define variables
-  float previousTemp = -1;
-  float currentTemp = -1;
-  float timeTillCool;
-  float rateOfChange;
-
-  // loop until optimal temperature is reached
-  while (true) {
-    if (currentTemp == -1) {
-      previousTemp = getTemp();
-      currentTemp = previousTemp;
-      //LCD.clear();
-      //LCD.print("topkek");
-    } else {
-      currentTemp = getTemp();
-      // get rate of change of temperature per 1 second
-      rateOfChange = abs((previousTemp - currentTemp)/2.5);
-   
-      if (!rateOfChange){
-        continue;
-      }
-      
-      timeTillCool = abs(currentTemp - optimal) / rateOfChange;
-
-      LCD.clear();
-      LCD.print("Time till cooldown:");
-      LCD.setCursor(0, 1);
-      LCD.print(timeTillCool);
-      LCD.print(" seconds");
-
-      if (timeTillCool < 0.1) return;
-      previousTemp = currentTemp;
-      delay(1500);
-      
-    }
-  }
+float calculateRateOfChange(float startTemp, float temp10) {
+  float k = log(abs(startTemp - 21)) / 10 - log(abs(temp10 - 21)) / 10;
+  return k;
 }
+
+float calculateOptimalTime(float startTemp, float optimal, float k) {
+  float t = log(abs(startTemp - 21)) / k - log(abs(optimal - 21)) / k;
+  return t;
+}
+
+
+// void displayTimeTillCooldown(float optimal) {
+//
+//   // define variables
+//   float previousTemp = -1;
+//   float currentTemp = -1;
+//   float timeTillCool;
+//   float rateOfChange;
+//
+//   // loop until optimal temperature is reached
+//   while (true) {
+//     if (currentTemp == -1) {
+//       previousTemp = getTemp();
+//       currentTemp = previousTemp;
+//       //LCD.clear();
+//       //LCD.print("topkek");
+//     } else {
+//       currentTemp = getTemp();
+//       // get rate of change of temperature per 1 second
+//       rateOfChange = abs((previousTemp - currentTemp)/11);
+//
+//       if (!rateOfChange){
+//         continue;
+//       }
+//
+//       timeTillCool = abs(currentTemp - optimal) / rateOfChange;
+//
+//       LCD.clear();
+//       LCD.print("Cooldown in:");
+//       LCD.setCursor(0, 1);
+//       LCD.print(timeTillCool);
+//       LCD.print("s ");
+//       LCD.print(currentTemp);
+//       LCD.print("/");
+//       LCD.print(optimal);
+//
+//
+//       if (timeTillCool < 0.1) return;
+//       previousTemp = currentTemp;
+//       delay(10000);
+//
+//     }
+//   }
+// }
+
+
 void loop() {
-  
+
   while (digitalRead(8)){
     LCD.setRGB(255, 255, 255);
     //checkForStabilize();
-    
+
     LCD.clear();
     LCD.print("kek");
     delay(1000);
-    
-    displayTimeTillCooldown(23);
+
+    float t0 = getTemp();
+    delay(10000);
+    float t10 = getTemp();
+    float k = calculateRateOfChange(t0, t10);
+    float t = calculateOptimalTime(t0, 25, k);
+    LCD.clear();
+    float temp = getTemp();
+    LCD.print(t);
+    LCD.print(" temp:");
+    LCD.print(temp);
+    delay(5000);
+
+
+    //displayTimeTillCooldown(25);
   }
 
   LCD.clear();
@@ -142,7 +172,7 @@ void loop() {
   // put your main code here, to run repeatedly:
 
   // Check for button press
-  
+
   LCD.setRGB(255, 255, 255);
   LCD.print(getTemp());
   delay(1000);
