@@ -8,7 +8,10 @@ const int R0 = 100000;            // R0 = 100k
 const int pinTempSensor = A0;     // Grove - Temperature Sensor connect to A5
 
 enum drinktype {COLD, ROOMTEMP, HOT};
+
 bool buttonPressed;
+bool production = false;
+
 unsigned int red;
 unsigned int green;
 unsigned int blue;
@@ -63,11 +66,11 @@ void checkForStabilize() {
 
     for (int i = 0; i < 10; i++) {
       temps[i] = getTemp();
-      LCD.clear();
-      LCD.print("Calibrating...");
-      LCD.setCursor(0, 1);
-      LCD.print("Temp = ");
-      LCD.print(temps[i]);
+//      LCD.clear();
+//      LCD.print("Calibrating...");
+//      LCD.setCursor(0, 1);
+//      LCD.print("Temp = ");
+//      LCD.print(temps[i]);
       if (i == 0) {
         minTemp = temps[i];
         maxTemp = temps[i];
@@ -76,6 +79,8 @@ void checkForStabilize() {
       else if (temps[i] > maxTemp) maxTemp = temps[i];
     }
 
+
+    // CHECK if Temperatures are not decreasing/increasing FURTHER
     if (maxTemp - minTemp <= 1) return;
 
   }
@@ -85,9 +90,9 @@ void checkForStabilize() {
 unsigned char getDrinkType(){
   unsigned char type = 0;
   float temp = getTemp();
-  if (temp < 7){
+  if (temp < 0){
     type = COLD;
-  }else if (temp > 20){
+  }else if (temp > 0){
     type = HOT;
   }else{
     type = ROOMTEMP;
@@ -127,8 +132,21 @@ float calculateOptimalTime(float startTemp, float optimal, float k) {
 unsigned int calculateTime(int optimumTemp) {
 
   float t0 = getTemp();
-  delay(10000);
+
+  int i = 5;
+  while (i) {
+    if (production && !digitalRead(8)) {
+      buttonPressed = false;
+      return -1;
+    }
+    delay(2000);
+    i--;
+  }
+
   float t10 = getTemp();
+  if (t0 == t10) return -1;
+
+  
   float k = calculateRateOfChange(t0, t10);
   return round(abs(calculateOptimalTime(t0, optimumTemp, k)));
 }
@@ -138,10 +156,20 @@ unsigned int calculateTime(int optimumTemp) {
 
 void loop() {
 
+
+  LCD.setRGB(255, 255, 255);
+  LCD.print(getTemp());
+  delay(1000);
+  LCD.clear();
+
   while (digitalRead(8)){
     buttonPressed = true;
-    
-    //checkForStabilize();
+
+    LCD.setRGB(255, 255, 0);
+    LCD.print("Please Wait!");
+    LCD.setCursor(0, 1);
+    LCD.print("Calibrating...");
+    checkForStabilize();
 
     int optimumTemp = getOptimumTemp();
     bool isRoomTemp = !optimumTemp ? true : false;
@@ -154,15 +182,15 @@ void loop() {
       LCD.setCursor(0, 1);
       LCD.print("Temp: ");
       LCD.print(currentTemp);
-//
-//      if (!digitalRead(8)) {
-//        delay(2000);
-//        if (!digitalRead(8)) buttonPressed = false;
-//      }
+
+      if (production && !digitalRead(8)) {
+        delay(2000);
+        if (!digitalRead(8)) buttonPressed = false;
+      }
       
     }
 
-//    if (!buttonPressed) break;
+    if (!buttonPressed) break;
 
     LCD.clear();
     LCD.setRGB(255, 255, 0);
@@ -171,7 +199,9 @@ void loop() {
     LCD.print("Calculating...");
 
     // TODO! CHANGE
-    unsigned int t = calculateTime(25);
+    unsigned int t;
+    while ((t = calculateTime(25)) == -1 && buttonPressed);
+    if (!buttonPressed) break;
     
     blueChange = (255 / t) ? (255 / t) : 1;
     greenChange = blueChange;
@@ -191,20 +221,18 @@ void loop() {
       LCD.print("(");
       LCD.print(currentTemp);
       LCD.print(")");
-      
-      //LCD.print(" Temp = ");
-      //LCD.print(temp);
-      t--;
 
-//      if (!digitalRead(8)) {
-//        delay(2000);
-//        if (!digitalRead(8)) buttonPressed = false;
-//      }
+      if (production && !digitalRead(8)) {
+         delay(2000);
+         if (!digitalRead(8)) buttonPressed = false;
+      }
+      
+      t--;
       
     }
 
     
-//    if (!buttonPressed) break;
+    if (!buttonPressed) break;
 
     LCD.clear();
     LCD.setRGB(0, 255, 0);
@@ -213,7 +241,9 @@ void loop() {
     LCD.print("Celsius: ");
     LCD.print(currentTemp);
     
-    t = calculateTime(22);
+    while ((t = calculateTime(21)) == -1 && buttonPressed);
+    
+    if (!buttonPressed) break;
 
     greenChange = (255 / t) ? (255 / t) : 1;
     redChange = greenChange;
@@ -233,19 +263,17 @@ void loop() {
       LCD.print("(");
       LCD.print(currentTemp);
       LCD.print(")");
-      
-      //LCD.print(" Temp = ");
-      //LCD.print(temp);
-      t--;
 
-//      if (!digitalRead(8)) {
-//        delay(2000);
-//        if (!digitalRead(8)) buttonPressed = false;
-//      }
+      if (production && !digitalRead(8)) {
+        delay(2000);
+        if (!digitalRead(8)) buttonPressed = false;
+      }
+            
+      t--;
       
     }
     
-//    if (!buttonPressed) break;
+    if (!buttonPressed) break;
 
     
     while (buttonPressed) {
@@ -264,23 +292,8 @@ void loop() {
     }
     
   }
-
-  
-//  if(digitalRead(8)){
-//  LCD.clear();
-//  LCD.print("Your drink has");
-//  LCD.setCursor(0, 1);
-//  LCD.print("cooled down");
-//  }
-//  
-//  for(;digitalRead(8) == 1;){
-//    delay(10);
-//  }
-
-  
-  
-  LCD.clear();
-  LCD.setRGB(255, 255, 255);
+ 
+  //LCD.clear();
 
   
   /*
