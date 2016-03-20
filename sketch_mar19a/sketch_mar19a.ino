@@ -10,7 +10,7 @@ const int pinTempSensor = A0;     // Grove - Temperature Sensor connect to A5
 enum drinktype {COLD, ROOMTEMP, HOT};
 
 bool buttonPressed;
-bool production = false;
+bool production = true;
 
 unsigned int red;
 unsigned int green;
@@ -21,6 +21,10 @@ unsigned int greenChange;
 unsigned int blueChange;
 
 float currentTemp;
+
+float roomTemp = 24;
+float testOptimalTemp = 25;
+float testBadTemp = 21;
 
 
 void setup() {
@@ -62,25 +66,21 @@ void checkForStabilize() {
   //loop until temperature stabilizes
   while(true) {
 
-    // set some unrealisitic temperatures as an edge case
-
     for (int i = 0; i < 10; i++) {
       temps[i] = getTemp();
-//      LCD.clear();
-//      LCD.print("Calibrating...");
-//      LCD.setCursor(0, 1);
-//      LCD.print("Temp = ");
-//      LCD.print(temps[i]);
       if (i == 0) {
         minTemp = temps[i];
         maxTemp = temps[i];
       }
       else if (temps[i] < minTemp) minTemp = temps[i];
       else if (temps[i] > maxTemp) maxTemp = temps[i];
+
+      if (production && !digitalRead(8)) {
+        buttonPressed = false;
+        return;
+      }
     }
 
-
-    // CHECK if Temperatures are not decreasing/increasing FURTHER
     if (maxTemp - minTemp <= 1) return;
 
   }
@@ -107,35 +107,38 @@ int getOptimumTemp() {
     optimumTemp = 7;
     break;
     case ROOMTEMP:
-    //roomtemp = true;
     optimumTemp = 0;
     break;
     case HOT:
-    optimumTemp = 60; //was 60 by default
+    optimumTemp = 60; 
     break;
     }
     return optimumTemp;
 }
 
+/*
+ * Calculate using Newton's Law of Cooling (room temperature is 24)
+ */
+ 
 float calculateRateOfChange(float startTemp, float temp10) {
-  float k = log(abs(startTemp - 24)) / 10 - log(abs(temp10 - 24)) / 10;
+  float k = log(abs(startTemp - roomTemp)) / 10 - log(abs(temp10 - roomTemp)) / 10;
   return k;
 }
 
 float calculateOptimalTime(float startTemp, float optimal, float k) {
-  float t = log(abs(startTemp - 24)) / k - log(abs(optimal - 24)) / k;
+  float t = log(abs(startTemp - roomTemp)) / k - log(abs(optimal - roomTemp)) / k;
   return t;
 }
 
 
 
-unsigned int calculateTime(int optimumTemp) {
+unsigned int calculateTime(int optimumTemp, bool isOptimum) {
 
   float t0 = getTemp();
 
   int i = 5;
   while (i) {
-    if (production && !digitalRead(8)) {
+    if (production && !digitalRead(8) && !isOptimum) {
       buttonPressed = false;
       return -1;
     }
@@ -146,7 +149,7 @@ unsigned int calculateTime(int optimumTemp) {
   float t10 = getTemp();
   if (t0 == t10) return -1;
 
-  
+
   float k = calculateRateOfChange(t0, t10);
   return round(abs(calculateOptimalTime(t0, optimumTemp, k)));
 }
@@ -156,24 +159,37 @@ unsigned int calculateTime(int optimumTemp) {
 
 void loop() {
 
-
-  LCD.setRGB(255, 255, 255);
-  LCD.print(getTemp());
-  delay(1000);
-  LCD.clear();
+  if (!production) {
+    LCD.setRGB(255, 255, 255);
+    LCD.print(getTemp());
+    delay(1000);
+    LCD.clear();
+  } else {
+    LCD.setRGB(0,0,0);
+  }
 
   while (digitalRead(8)){
     buttonPressed = true;
 
+    /*
+     * Calibrate device until temperature settles
+     */
+     
     LCD.setRGB(255, 255, 0);
     LCD.print("Please Wait!");
     LCD.setCursor(0, 1);
     LCD.print("Calibrating...");
-    checkForStabilize();
+    //checkForStabilize();
+    
+    if (!buttonPressed) break;
+
+    /*
+     * Room temperature case handling
+     */
 
     int optimumTemp = getOptimumTemp();
     bool isRoomTemp = !optimumTemp ? true : false;
-    
+
     while(isRoomTemp && buttonPressed) {
       float currentTemp = getTemp();
       LCD.clear();
@@ -187,27 +203,37 @@ void loop() {
         delay(2000);
         if (!digitalRead(8)) buttonPressed = false;
       }
-      
+
     }
 
     if (!buttonPressed) break;
+
+    /*
+     * If not home temperature, calculate rate of change until optimal temperature
+     */
 
     LCD.clear();
     LCD.setRGB(255, 255, 0);
     LCD.print("Please Wait!");
     LCD.setCursor(0, 1);
     LCD.print("Calculating...");
-
-    // TODO! CHANGE
-    unsigned int t;
-    while ((t = calculateTime(25)) == -1 && buttonPressed);
-    if (!buttonPressed) break;
     
+    unsigned int t;
+    // optimum temperature is 25
+    while ((t = calculateTime(testOptimalTemp, false)) == -1 && buttonPressed);
+    if (!buttonPressed) break;
+
+    t = 7;
+
+    /*
+     * Optimum temperature handling
+     */
+
     blueChange = (255 / t) ? (255 / t) : 1;
     greenChange = blueChange;
     blue = 255;
     green = 0;
-    
+
     while (t && buttonPressed){
       currentTemp = getTemp();
       LCD.clear();
@@ -226,13 +252,17 @@ void loop() {
          delay(2000);
          if (!digitalRead(8)) buttonPressed = false;
       }
-      
+
       t--;
-      
+
     }
 
-    
+
     if (!buttonPressed) break;
+
+    /*
+     * Drink has reached optimal temperature!
+     */
 
     LCD.clear();
     LCD.setRGB(0, 255, 0);
@@ -240,16 +270,25 @@ void loop() {
     LCD.setCursor(0, 1);
     LCD.print("Celsius: ");
     LCD.print(currentTemp);
-    
-    while ((t = calculateTime(21)) == -1 && buttonPressed);
-    
+
+    /*
+     * Calculate time until the drink is too cold/warm to drink
+     */
+
+    //bad temperature is 21
+    while ((t = calculateTime(testBadTemp, false)) == -1 && buttonPressed);
+
     if (!buttonPressed) break;
+
+    /*
+     * Bad temperature handling
+     */
 
     greenChange = (255 / t) ? (255 / t) : 1;
     redChange = greenChange;
     green = 255;
     red = 0;
-    
+
     while (t && buttonPressed){
       currentTemp = getTemp();
       LCD.clear();
@@ -264,18 +303,22 @@ void loop() {
       LCD.print(currentTemp);
       LCD.print(")");
 
-      if (production && !digitalRead(8)) {
-        delay(2000);
-        if (!digitalRead(8)) buttonPressed = false;
-      }
-            
+//      if (production && !digitalRead(8)) {
+//        delay(2000);
+//        if (!digitalRead(8)) buttonPressed = false;
+//      }
+
       t--;
-      
+
     }
-    
+
     if (!buttonPressed) break;
 
-    
+    /*
+     * The "bad temperature" has been reached!
+     */
+
+
     while (buttonPressed) {
       LCD.clear();
       LCD.setRGB(255, 0, 0);
@@ -284,26 +327,15 @@ void loop() {
       LCD.print("Celsius: ");
       LCD.print(currentTemp);
       currentTemp = getTemp();
-      
+
       if (!digitalRead(8)) {
         delay(2000);
         if (!digitalRead(8)) buttonPressed = false;
       }
     }
-    
+
   }
- 
-  //LCD.clear();
 
+  if (production) LCD.clear();
   
-  /*
-  // put your main code here, to run repeatedly:
-
-  // Check for button press
-
-  LCD.setRGB(255, 255, 255);
-  LCD.print(getTemp());
-  delay(1000);
-  LCD.clear();
-  */
 }

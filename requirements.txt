@@ -1,0 +1,9 @@
+1) User places a beverage on the smart cup holder, this presses the button inside the holder.
+
+2) The device measures the temperature and displays it to the user on the LCD display. It also displays "Measuring cooling/warming rate..."
+
+3) The device waits until the temperature stabilizes. The devices decides that the temperature of the beverage has stabilized if the last 10 measurements are within 1 degree. 
+
+4) Measurements are done every second, with time from since placement being measured (e.g. delay for 1 sec and increase a counter by 1). After a temperature change is detected, the rate of change of the temperature is measured.
+
+5) The time until optimal temperature is calculated and displayed to the user on the LCD display as a countdown. The LCD light colour changes as countdown approaches 0. 
