@@ -142,10 +142,18 @@ void loop() {
       LCD.print(temp);
       t--;
     }
-    
-    delay(5000);
   }
-
+  if(digitalRead(8)){
+  LCD.clear();
+  LCD.print("Your drink has");
+  LCD.setCursor(0, 1);
+  LCD.print("cooled down");
+  }
+  
+  for(;digitalRead(8) == 1;){
+    delay(10);
+  }
+  
   LCD.clear();
   /*
   // put your main code here, to run repeatedly:
