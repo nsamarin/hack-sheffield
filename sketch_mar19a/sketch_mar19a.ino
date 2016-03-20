@@ -75,9 +75,9 @@ void checkForStabilize() {
 unsigned char getDrinkType(){
   unsigned char type = 0;
   float temp = getTemp();
-  if (temp < 15){
+  if (temp < 7){
     type = COLD;
-  }else if (temp > 37){
+  }else if (temp > 60){
     type = HOT;
   }else{
     type = ROOMTEMP;
@@ -86,30 +86,24 @@ unsigned char getDrinkType(){
 }
 
 float calculateRateOfChange(float startTemp, float temp10) {
-  float k = log(abs(startTemp - 21)) / 10 - log(abs(temp10 - 21)) / 10;
+  float k = log(abs(startTemp - 26)) / 10 - log(abs(temp10 - 26)) / 10;
   return k;
 }
 
 float calculateOptimalTime(float startTemp, float optimal, float k) {
-  float t = log(abs(startTemp - 21)) / k - log(abs(optimal - 21)) / k;
+  float t = log(abs(startTemp - 26)) / k - log(abs(optimal - 26)) / k;
   return t;
 }
 
 
 
-void calculateTime() {
+unsigned int calculateTime(unsigned char optimumTemp) {
 
   float t0 = getTemp();
   delay(10000);
   float t10 = getTemp();
   float k = calculateRateOfChange(t0, t10);
-  float t = calculateOptimalTime(t0, 25, k);
-  LCD.clear();
-  float temp = getTemp();
-  LCD.print(t);
-  LCD.print(" temp:");
-  LCD.print(temp);
-
+  return round(abs(calculateOptimalTime(t0, optimumTemp, k)));
 }
 
 void loop() {
@@ -117,16 +111,39 @@ void loop() {
   while (digitalRead(8)){
     LCD.setRGB(255, 255, 255);
     //checkForStabilize();
-
     LCD.clear();
     LCD.print("Calculating time...");
-    delay(1000);
-    calculateTime();
+    
 
+    unsigned char optimumTemp = 0;
+    bool roomtemp = false;
+    
+    switch(getDrinkType()){
+    case COLD:
+    optimumTemp = 7;
+    break;
+    case ROOMTEMP:
+    //roomtemp = true;
+    optimumTemp = 25;
+    break;
+    case HOT:
+    optimumTemp = 60;
+    break;
+    }
+    unsigned int t = calculateTime(optimumTemp);
+    
+    while (t && roomtemp == false){
+      float temp = getTemp();
+      LCD.clear();
+      LCD.print("You have:");
+      LCD.setCursor(0, 1);
+      LCD.print(t);
+      LCD.print(" Temp = ");
+      LCD.print(temp);
+      t--;
+    }
+    
     delay(5000);
-
-
-    //displayTimeTillCooldown(25);
   }
 
   LCD.clear();
